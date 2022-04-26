@@ -7,21 +7,22 @@ Kernel	&emsp;&emsp;&ensp;			The main files of the kernel
 
 Orignal Readme Page...   
 
-PopupNavigator Java Applet - JDK 1.1.3 neeed
-    On this page is the design specs for Amateur OS... For now it is only
-   in the 16 bit mode...I am writing it mainly to work with DSP so I don't
-   see this as a problem...On with the show....
-  1. What is the primary goal of my OS?
-     Real time to use for DSP and Amateur radio modes...
-     My goal is for no TSRs and a library of routines to
-     program into apps...Minamul kernel support...
-     ie...As few interrupts as possible..
-
-  2. What platforms will Amateur support?
-     i386 systems of 486 or above...
-     Standard hardware:
-         VGA video write to standard ports..
-         COM port standard, fossil driver..
+    On this page is the design specs for Amateur OS... For now it is only  
+    in the 16 bit mode...I am writing it mainly to work with DSP so I don't  
+    see this as a problem...On with the show....  
+    
+  1. What is the primary goal of my OS?  
+     Real time to use for DSP and Amateur radio modes...  
+     My goal is for no TSRs and a library of routines to  
+     program into apps...Minamul kernel support...  
+     ie...As few interrupts as possible..  
+       
+       
+  2. What platforms will Amateur support?  
+     i386 systems of 486 or above...  
+     Standard hardware:  
+     VGA video write to standard ports..  
+     COM port standard, fossil driver..
          Printer port for I/O..
          Sound Blaster 16 for DSP..
 
