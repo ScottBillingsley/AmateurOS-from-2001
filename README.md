@@ -22,17 +22,18 @@ Orignal Readme Page...
      i386 systems of 486 or above...  
      Standard hardware:  
      VGA video write to standard ports..  
-     COM port standard, fossil driver..
-         Printer port for I/O..
-         Sound Blaster 16 for DSP..
-
-  3. Will it be multitasking?
-     No...Single user, single app...16 bit real mode
-
-  4. What file system will it use?
+     COM port standard, fossil driver..  
+     Printer port for I/O..  
+     Sound Blaster 16 for DSP..  
+            
+  3. Will it be multitasking?  
+     No...Single user, single app...16 bit real mode  
+     
+  4. What file system will it use?  
      FAT 12 and FAT 16...Why reinvent the wheel..
-
-  5. Why am I doing this????
-     Other that the fact that I've gone nuts??
-     I want to learn more about the computer...
-     I want to know why things do what they do...
+     
+  5. Why am I doing this????  
+     Other that the fact that I've gone nuts??  
+     I want to learn more about the computer...  
+     I want to know why things do what they do...  
+     
