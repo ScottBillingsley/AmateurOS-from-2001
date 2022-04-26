@@ -1,0 +1,130 @@
+/*
+		SYS.H-- : System commands for Amateur OS
+		Scott Billingsley 6/6/2001
+*/
+
+void WAIT()
+{
+/*
+		Waits the number of ticks passed to it
+		in AX..A occurs aprox 18.2 times per second..
+*/
+$PUSH BX
+$PUSH CX
+$PUSH DX
+
+$MOV BX,AX		//Keep the passed AX
+
+$MOV AH,0		//Setup for the first interupt call
+$INT 0x1A
+$ADD BX,DX		//Keep the start value
+START:			//and add then together..
+$MOV AH,0		//Setup for the loop..
+$INT 0x1A
+$CMP DX,BX		
+$JNA START		//If DX is less then BX junp back to start..
+
+$POP DX
+$POP CX
+$POP BX
+}
+
+void install_int(byte num; word segment; word offset)
+{
+/*
+		Installs an interupt...
+*/
+ES=0000;
+AX=num*4;
+SI=AX;
+AX=offset;
+BX=segment;
+
+$DB 0X26		//ES:
+$DB 0X89, 0X04		//MOV [SI], AX
+$DB 0X26		//ES:
+$DB 0X89,0X5C,0X02	//MOV [SI+2],AX
+}
+
+void a20_test()
+{
+/*
+			Sets the A20 line...
+			Returns AL=1
+*/
+$ DB 0XFA,0X31,0XC9,0XE4,0X64,0XA8,0X02,0XE0
+$ DB 0XFA,0XB0,0XD1,0XE6,0X64,0XE4,0X64,0XA8
+$ DB 0X02,0XE0,0XFA,0XB0,0XDF,0XE6,0X60,0XB9
+$ DB 0X14,0X00,0XE7,0XED,0XE2,0XFC,0XFB,0XB0,0X01
+}
+
+void test_a20()
+{
+/*
+			Test the a20 line state...
+			Return AL=0 for on
+			       AL=1 for off
+*/
+$ DB 0X31,0XC0,0X8E,0XE0,0X48,0X8E,0XE8,0X64
+$ DB 0XA0,0X00,0X00,0X88,0XC4,0XF6,0XD0,0X65
+$ DB 0X86,0X06,0X10,0X00,0X64,0X3A,0X26,0X00
+$ DB 0X00,0X65,0XA2,0X10,0X00,0X74,0X05,0XB0
+$ DB 0X01,0XE9,0X02,0X00,0XB0,0X00
+
+}
+
+byte CMPSTR()
+{
+/*
+		Compairs two strings 
+		CMPSTR(#string1,#string2);
+*/
+
+SI=AX;		//First string
+DI=BX;		//Second string
+CMP_LOOP:
+$DB 0x8A,0x04	//mov the address of character [SI] into AL
+$DB 0x8A,0x25	//mov the address of character [DI] into AH
+if(AH==0x20){
+	if(SI>0x00){
+		AL=AH;
+		$JMP E_LOOP
+	}
+}
+if(AL==00){
+	$JMP E_LOOP
+}
+if(AH!=AL){
+	$JMP E_LOOP
+}
+$INC DI
+$INC SI		//Next character
+$JMP CMP_LOOP
+E_LOOP:
+if(AL==AH){
+	return(TRUE);
+}ELSE{
+	return(FALSE);
+}
+
+}
+void BCD_ASCII()
+{
+/* 
+		Convert a binary coded decimal passed in AX
+		into an ASCII and store in string pointed to 
+		by ES:DI.
+*/
+
+$PUSH AX
+$SHR AL,4
+$OR AL,0x30
+$STOSB
+
+$POP AX
+$AND AL,0x0F
+$OR AL,0x30
+$STOSB
+
+}
+/*** 	End of SYS.H--		**/

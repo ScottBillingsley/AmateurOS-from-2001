@@ -1,0 +1,271 @@
+/*
+		FLOPPY.H--
+		Routines for the floppy drive
+		Scott Billingsley 6/3/2001
+*/
+
+
+void reset_floppy()
+{
+/*
+		Resets the floppy drive
+		returns 0 in AL if drive reset ok
+		returns 1 in AL if drive reset failed
+*/
+$XOR AX,AX		//Rest drive function
+$MOV DL,0		//Drive to reset A:
+$INT 0x13
+if ( CARRYFLAG ){
+	$MOV AL,1
+}
+ELSE{
+	$MOV AL,0
+}
+$RET
+}
+
+void ConvertLBA()
+{
+/*
+		Convert FAT cluster in AX into LBA
+		LBA=(cluster-2) * sectors per cluster
+		Return AX=LBA
+*/
+$SUB AX,0x0002		//Zero base the cluster
+$XOR CX,CX		//Clear CX
+$MOV CL,SectorsPerCluster
+$MUL CX			//Multiply AX by CX
+$ADD AX,DataSector	//Add this to the base address
+$RET
+}
+void ConvertLBA_CHS()
+{
+/*
+		Convert LBA in AX into CHS
+	absolute sector = (logical sector / sectorpertrack)+1
+	absolute head = (logical sector / sectorpertrack) MOD num heads
+	absolute track= logical sector /(sectorpertrack * num heads)
+*/
+$XOR DX,DX		//Clear the dx
+$DIV SectorsPerTrack	//Divide AX by sectors per track
+$INC DL			//Add 1
+$MOV AbsoluteSector,DL
+$XOR DX,DX		//Clear the dx
+$DIV NumHeads;
+$MOV AbsoluteHead,DL
+$MOV AbsoluteTrack,AL
+$RET
+}
+void MOUNT_FLOPPY()
+{
+/*
+		Reads the directory of drive 0 
+		into memory at 0x8000:0400
+*/
+Load_BPB();
+Decode_BPB();
+/******* Compute the size of the root *********/
+$CLI
+$XOR CX,CX
+$XOR DX,DX
+AX=0x0020;		//32 bytes per entry
+$MUL MaxRootEntries	//AX= total dir size
+$DIV BytesPerSector	//AX= # of sectors to read
+AX><CX;			//Store AX in CX
+AL=TotalFATs;
+$MUL SectorsPerFAT	
+$ADD AX,ReservedSectors
+DataSector=AX;		//Start of the dir
+$ADD DataSector,CX	//Start of the data
+BX=0x0400;		//Offset for dir
+ReadSectors();
+$STI
+read_fat_into_memory();
+}
+void Load_BPB()
+{
+/*
+		Loads the BPB of floppy 0 
+		into memory at 0x8000:0200
+*/
+$CLI
+AX=0x8000;
+ES=AX;
+BX=0x0200;		//Offset within ES
+AH=0x02;
+AL=1;			//1 sector for BPB
+CH=0;			//Track 0
+CL=1;			//Sector 1
+DH=0;			//Head 0
+DL=0;			//Drive 0
+$INT 0x13
+$STI
+}
+void Decode_BPB()
+{
+/*
+		Reads the BPB in memory and fills
+		the variables in VAR.H--
+*/
+$CLI			//Turn off interrupts
+AX=0x8000;
+ES=AX;			//Set the ES
+DI=0x0200;		//Set the offset
+$ADD DI,11		//Start of first data
+BytesPerSector=ESWORD[DI];
+$ADD DI,2
+SectorsPerCluster=ESBYTE[DI];
+$ADD DI,1
+ReservedSectors=ESWORD[DI];
+$ADD DI,2
+TotalFATs=ESBYTE[DI];
+$ADD DI,1
+MaxRootEntries=ESWORD[DI];
+$ADD DI,2
+TotalSectors=ESWORD[DI];
+$ADD DI,2
+MediaDescriptor=ESBYTE[DI];
+$ADD DI,1
+SectorsPerFAT=ESWORD[DI];
+$ADD DI,2
+SectorsPerTrack=ESWORD[DI];
+$ADD DI,2
+NumHeads=ESWORD[DI];
+$STI
+}
+
+void ReadSectors()
+{
+/*		
+		Reads Sectors off the disk into ES:BX
+*/
+//$CLI
+RMAIN:
+	$MOV DI,0x0005           //five retries for error
+RSECTORLOOP:
+	$PUSH AX
+	$PUSH BX
+	$PUSH CX
+	ConvertLBA_CHS();
+	$MOV AH,0x02                     //BIOS read sector
+AL=AbsoluteTrack;	
+CH=AL;
+AL=AbsoluteSector;      		 //sector
+CL=AL;
+AL=AbsoluteHead;        		 //head
+DH=AL;
+AL=DriveNumber;         	         //drive
+DL=AL;
+	AL=0X01;
+	$INT 0x13                         //invoke BIOS
+	if(NOTCARRYFLAG){
+		$JMP RSUCCESS           //test for read error
+	}
+//	$XOR AX,AX                      //BIOS reset disk
+//	$INT 0x13                        //invoke BIOS
+	$DEC DI
+	$POP CX
+	$POP BX
+	$POP AX
+	$JNZ RSECTORLOOP                 //attempt to read again
+	$INT 0x18
+RSUCCESS:
+	$POP CX
+	$POP BX
+	$POP AX
+	$ADD BX,BytesPerSector		   //queue next buffer
+	$INC AX                            //queue next sector
+	$LOOP RMAIN
+BYPASS:
+}
+
+void find_next_sector()
+{
+/*
+		Finds the next sector to read
+*/
+$PUSH BX
+ES=0x8000;
+
+AX=PCB_file_sector;
+CX=AX;
+DX=AX;			//copy for multiply
+$SHR DX,0x0001		//Divide by 2
+$ADD CX,DX		//Sum for 3/2
+BX=0x1400;		//Offset of FAT
+$ADD BX,CX
+DX=ESWORD[BX];		//Get a word from FAT
+$TEST AX,0x0001
+$JNZ ODD_CLUSTER
+EVEN_CLUSTER:
+$AND DX,0x0FFF		//Lower 12 bits
+$JMP FIND_NEXT_DONE
+ODD_CLUSTER:
+$SHR DX,0x0004			//High 12 bits
+FIND_NEXT_DONE:
+PCB_file_sector=DX;
+if(DX<0x0FF0){
+	AH=1;
+}else{
+	AH=0;
+}
+$POP BX
+}
+
+void read_fat_into_memory()
+{
+/*
+		Read the FAT into memory at 0x8000:1400
+*/
+$CLI
+$PUSHA
+ES=0x8000;
+$XOR AX,AX
+AL=TotalFATs;		//How many FATs
+$MUL SectorsPerFAT	//AX=# of sectors
+CX><AX;			//Store it in CX
+$ADD AX,ReservedSectors	//Offset for boot sector
+BX=0x1400;		//Loacation for FAT
+ReadSectors();
+$STI
+$POPA
+}
+
+void load_sector(word segment;word offset)
+{
+/*
+		Load a sector from disk to memory ES:BX
+		Assumes:	Interrupts off
+				LBA to CHS conversion done
+		Passed noting  Returns Carry Flag
+*/
+ES=segment;
+BX=offset;
+
+DI=0x05;				 //5 tries for error
+LOAD_SECTOR_LOOP:
+	$MOV AH,0x02                     //BIOS read sector
+AL=AbsoluteTrack;	
+CH=AL;
+AL=AbsoluteSector;      		 //sector
+CL=AL;
+AL=AbsoluteHead;        		 //head
+DH=AL;
+AL=DriveNumber;         	         //drive
+DL=AL;
+	AL=0X01;
+	$INT 0x13                         //invoke BIOS
+	if(NOTCARRYFLAG){
+	$JMP LOAD_SECTOR_SUCCESS
+	}
+	DI--;
+	$JNZ LOAD_SECTOR_LOOP
+	$PUSHA
+	WRITESTR("\n    Error reading disk!!\n");
+	$POPA
+	$STI
+	$JMP shell
+LOAD_SECTOR_SUCCESS:
+$ADD BX,BytesPerSector
+
+}

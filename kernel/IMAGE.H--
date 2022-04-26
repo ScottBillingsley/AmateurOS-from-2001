@@ -1,0 +1,55 @@
+/*
+			IMAGE.H--
+			Image file for Amateur OS
+			Scott Billingsley 7/2001
+*/
+void AMOS_IMAGES()
+{
+/*
+		Writes diffrent images to the screen
+		AX=1	Banner image
+*/
+if(AX==1){
+	$JMP BANNER1
+}ELSE{
+	$JMP AROUND
+}
+BANNER1:
+BOX_DRAW(0x1FC9,0x01);		//Attrib in AH, char in AL, times in BX
+BOX_DRAW(0x1FCD,0x4E);
+BOX_DRAW(0x1FBB,0x01);
+BOX_DRAW(0x1FBA,0x01);
+BOX_DRAW(0x1F20,0x08);
+DI=#banner;
+AH=0x1F;
+BOX_WRITE(AX);
+BOX_DRAW(0x1F20,0x0D);
+BOX_DRAW(0x1FBA,0x01);
+BOX_DRAW(0x1FBA,0x01);
+BOX_DRAW(0x1F20,0x08);
+DI=#version;
+AH=0x1F;
+BOX_WRITE(AX);
+BOX_DRAW(0x1F20,0x20);
+BOX_DRAW(0x1FBA,0x01);
+BOX_DRAW(0x1FBA,0x01);
+BOX_DRAW(0x1F20,0x08);
+DI=#www_home;
+AH=0x1F;
+BOX_WRITE(AX);
+BOX_DRAW(0x1F20,0x22);
+BOX_DRAW(0x1FBA,0x01);
+BOX_DRAW(0x1FBA,0x01);
+BOX_DRAW(0x1F20,0x08);
+DI=#www_email;
+AH=0x1F;
+BOX_WRITE(AX);
+BOX_DRAW(0x1F20,0x2F);
+BOX_DRAW(0x1FBA,0x01);
+BOX_DRAW(0x1FC8,0x01);		//Attrib in AH, char in AL, times in BX
+BOX_DRAW(0x1FCD,0x4E);
+BOX_DRAW(0x1FBC,0x01);
+BOX_DRAW(0x0720,0x01);		//Set attrb white on black
+
+AROUND:
+}

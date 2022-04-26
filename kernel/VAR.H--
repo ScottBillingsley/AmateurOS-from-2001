@@ -1,0 +1,132 @@
+/*
+		VAR.H--		Variables for Amateur OS
+		Scott Billingsley	7/2001
+*/
+/*
+		Command line buffer
+*/	
+byte command_line[128]=0;
+byte time_display[9]=0;
+byte date_display[12]=0;
+/*
+		Known commands
+*/
+byte amos_about="about";
+byte amos_info="info";
+byte amos_help="help";
+byte amos_reboot="reboot";
+byte amos_clr="clr";
+byte amos_dir="dir";
+byte amos_ver="ver";
+byte amos_time="time";
+byte amos_date="date";
+byte amos_test="test";
+/*
+		Known File types
+*/
+byte amos_file_type_number=4;
+byte amos_file_type_bin="bin";
+byte amos_file_type_com="com";		
+byte amos_file_type_txt="txt";
+byte amos_file_type_asm="asm";
+byte amos_file_type_c="c--";
+
+/*
+		Timer
+*/
+dword IntVectorSave=0x00000000;
+byte timer_count=0x00;
+/*
+		Images
+*/
+byte banner="Amateur OS by Scott Billingsley using Sphinx C-- and NASM";
+byte version="Version 0.0.1B Beta kernel  7/30/2001";
+byte www_home="WWW homepage  http://scottie.20m.com";
+byte www_email="Email at kb5ryo@qsl.net";
+/*		
+		Some buffers for the BPB
+*/
+byte OEM_ID[7]=0;
+word BytesPerSector=0x0000;
+byte SectorsPerCluster=0x00;
+word ReservedSectors=0x0000;
+byte TotalFATs=0x00;
+dword MaxRootEntries=0x00000000;
+dword TotalSectors=0x00000000;
+byte MediaDescriptor=0x00;
+dword SectorsPerFAT=0x00000000;
+dword SectorsPerTrack=0x00000000;
+dword NumHeads=0x00000000;
+byte HiddenSectors[7]=0;
+byte TotalSectorsLarge[7]=0;
+byte DriveNumber=0x00;
+byte Flags=0x00;
+byte Signature=0x00;
+byte VolumeID[7]=0;
+byte VolumeLabel[10]=0;
+byte SystemID[7]=0;
+
+word DataSector=0x0000;
+byte AbsoluteSector=0x00;
+byte AbsoluteHead=0x00;
+byte AbsoluteTrack=0x00;
+/*
+		System buffers
+*/
+byte newline="\n                                                                                 \n";
+dword return_address=0;
+word memory_offset=0x0000;
+byte memory_segment=0x0000;
+word com_memory_offset=0x0100;
+byte test_msg="Hello World!!\n";
+byte current_drive=0;
+
+byte first_memory_block=0x1000;
+byte first_block_open=0;
+byte first_block_active=0;
+
+byte second_memory_block=0x2000;
+byte second_block_open=0;
+byte second_block_active=0;
+
+byte third_memory_block=0x3000;
+byte third_block_open=0;
+byte third_block_active=0;
+
+byte fourth_memory_block=0x4000;
+byte fourth_block_open=0;
+byte fourth_block_active=0;
+
+byte fifth_memory_block=0x5000;
+byte fifth_block_open=0;
+byte fifth_block_active=0;
+
+byte sixth_memory_block=0x6000;
+byte sixth_block_open=0;
+byte sixth_block_active=0;
+
+/*
+		PCB buffers
+*/
+byte PCB_file_name[12]=0;
+byte PCB_file_ext[4]=0;
+dword PCB_file_size=0;
+word PCB_file_sector=0;
+
+/*
+		File search
+*/
+byte file_search_name[12]=0;
+dword file_search_size=0;
+word file_search_sector=0;
+
+/*
+                Image var
+*/
+byte image_about="ษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป\n"
+                 "บ         Amateur OS by Scott Billingsley using Sphinx C-- and NASM            บ\n"
+                 "บ             Version 0.0.1B Beta kernel  7/30/2001                            บ\n"
+                 "บ             WWW homepage  http://scottie.20m.com                             บ\n"
+                 "บ             Email at kb5ryo@qsl.net                                          บ\n"
+                 "ศออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ";
+

@@ -1,0 +1,158 @@
+/*
+		VGA.H-- : VGA commands for Hotel OS
+		Scott Billingsley 6/6/2001
+*/
+
+void Check_VGA()
+{
+/*
+		Checks to see if a VGA or MCGA card is installed
+*/
+$XOR BX,BX
+$MOV AX,0X01A00
+$INT 0X10
+$RET
+}
+
+void SetVGA()
+{
+/*
+		Used to set the monitor in the 
+		640x480 vga mode, sceen 12
+*/
+$MOV AH,0
+$MOV AL,0x12
+$INT 0x10
+
+}
+
+void SHOWVGA()
+{
+/*
+		Show a line of text passed in AX on the screen..
+		And the collor attrib passed in BX..
+		The syntax is SHOWVGA(byte,int)..
+*/
+
+BH=0;
+$PUSH SI
+SI=AX;
+AH=0xE;
+UP:
+$LODSB
+$CMP AL,0
+$JZ DOWN
+$INT 0x10
+$JMP SHORT UP
+DOWN:
+$POP SI
+}
+
+void FS_EDI_VIDEO()
+{
+//Direct write to video memory using EDI
+ECX=0x00000007;
+SI=AX;
+EDI=0xB8C80;
+DGET:
+EAX=DSDWORD[SI];
+@FS_MOV_EAX();
+$ADD SI,4
+$ADD EDI,4
+$LOOP DGET
+}
+
+void BOX_WRITE()
+{
+/*
+		Writes text to a box on the screen
+		AH=Attrib of character ,DI pointer to
+		string address
+
+*/
+$CLI
+NEXT_LETTER:
+AL=DSBYTE[DI];
+$CMP AL,0
+$JE LAST_LETTER
+if(AL==0x0D){
+	$PUSHA
+	WRITELN();
+	$POPA
+	DI++;
+	DI++;
+	$JMP NEXT_LETTER
+}
+BOX_DRAW(AX,0x01);
+DI++;
+$JMP NEXT_LETTER
+LAST_LETTER:
+$STI
+}
+
+
+void BOX_DRAW()
+{
+/*
+		Draws Al charactor to the screen BX times
+		with attrib AH
+*/
+CX=BX;
+BOX_START:
+$PUSH CX
+GWRITE(AX);
+$POP CX
+$LOOP BOX_START
+}
+
+void GWRITE()
+{
+$PUSHA
+AH=0x03;
+$INT 0x10
+$POPA
+BL=AH;
+AH=0x09;
+CX=0x0001;
+BH=0;
+$INT 0x10		//Print character
+$PUSHA
+AH=0x03;
+$INT 0x10		//Read cursor
+
+//if(DL<79){
+	DL++;
+//}ELSE{
+//	$PUSHA
+//	WRITELN();
+//	$POPA
+//	DL=0x00;
+//	AH=0x03;
+//	$INT 0x10
+//	DL=0x00;
+//	}
+
+//if(DH==24){
+//	if(DL==0x00){
+//	$PUSHA
+//	AX=0x0920;
+//	BX=0x0007;
+//	CX=0x0001;
+//	$INT 0x10
+//	WRITELN();
+//	$POPA
+//	DL=0x00;
+//	DH=23;
+//	$JMP G_CURSOR_SET
+//	}
+//}
+
+
+G_CURSOR_SET:
+AH=0x02;
+$INT 0x10		//Set cursor
+G_AROUND:
+$POPA
+AH=BL;
+
+}

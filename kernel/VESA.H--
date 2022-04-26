@@ -1,0 +1,41 @@
+/*
+		VESA.H-- : VESA routines for Hotel OS
+		Scott Billingsley 6/6/2001
+*/
+void CheckVESA()
+{
+/*
+		Check to see if the machine will support
+		VESA video...
+*/
+
+$MOV AX,0x4F00			//Function 0x4F00 checkes the video and
+$INT 0x10			//returns AH..
+ 
+IF(AH==0x0){
+SHOW("VESA Mode supported..!!\n");
+}
+IF(AH==0x01){
+SHOW("VESA call FAILED!! \n");
+}
+IF(AH==0x02){
+SHOW("VESA not supported on this system...\n");
+}
+IF(AH==0x03){
+SHOW("Invalid command in current mode..\n");
+}
+}
+
+void VesaMode()
+{
+/*
+		Switch video card to VESA mode 
+		640x480x256
+*/
+$MOV AX,0x4F02			//Function 0x4F02 of INT 0x10
+$MOV BX,0x0101			//Number 101..640x480x16/256
+$INT 0x10
+}
+
+
+/*	End of VESA.H--		*/

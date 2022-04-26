@@ -1,0 +1,282 @@
+/*
+		FILE.H--	File routines for Amateur OS
+		Scott Billingsley 2001
+*/
+
+void Print_DIR()
+{
+/*
+		Diectory listing using dir in memory.
+*/
+$CLI
+DS=CS;
+ES=0x8000;		//Point ES
+CX=MaxRootEntries;      //Number of names
+DI=0x400;		//Offset
+SI=0x00;
+
+NLOOP:
+AL=ESBYTE[DI];
+$CMP AL,0xE5
+$JE DIR_PRINT_DONE
+$CMP AL,0x00
+$JE DIR_PRINT_DONE	//Check for empty dir
+DI++;
+SI++;
+if(SI==0x09){
+	AL><DL;
+	WRITE(0x2E);
+	DL><AL;
+}
+WRITE(AL);
+$CMP SI,0x0B
+$JNE NLOOP
+WRITESTR("    ");
+$ADD DI,19
+WRITEINT(ESWORD[DI]);
+DI--;
+DI--;
+WRITEINT(ESWORD[DI]);
+WRITELN();
+SI=0x0;
+$ADD DI,0x0004
+CX--;
+if(CX>0x00){
+	$JMP NLOOP
+}
+DIR_PRINT_DONE:
+WRITELN();
+$STI
+}
+
+void Load_PCB()
+{
+$CLI
+DS=CS;
+ES=0x8000;		//Point ES
+CX=MaxRootEntries;      //Number of names
+DI=0x400;		//Offset
+SI=0x00;
+PCB_LOOP:
+AL=ESBYTE[DI];			//get a byte
+if(AL==0xE5){			//if it equals 0x05 dir is erased
+$JMP LOAD_PCB_DONE		//jump out
+}
+if(AL==0x00){			//if al equals 0 dir is empty
+$JMP LOAD_PCB_DONE		//Check for empty dir
+}
+if(SI<0x08){			//if SI < 8 store the name
+	if(AL==0x20){
+	PCB_file_name[SI]=0;
+	}else{
+	PCB_file_name[SI]=AL;
+	}
+}else{				//if SI>8 store the ext
+PCB_file_ext[SI-0x08]=AL;
+}
+DI++;
+SI++;
+$CMP SI,0x0B
+$JNE PCB_LOOP
+PCB_file_ext[SI-0x07]=0;
+$ADD DI,15
+PCB_file_sector=ESWORD[DI];	//Store the start sector
+$ADD DI,2
+PCB_file_size=ESDWORD[DI];	//Store the size
+SI=0x00;
+$PUSHA
+STR_DOWN(#PCB_file_name);	//Make them lower case
+STR_DOWN(#PCB_file_ext);
+if(CMPSTR(#PCB_file_name,#command_line)){  	//See if file matchs command line
+	$POPA
+	AH=1;
+	$JMP LOAD_PCB_DONE	//if so set AH and jump out
+}
+$POPA
+$ADD DI,0x0004			//if not do it again
+CX--;
+if(CX>0x00){
+	$JMP PCB_LOOP		
+}
+AH=0;
+LOAD_PCB_DONE:
+$STI
+}
+void Check_EXT()
+{
+/*
+		Check for a supported ext.
+*/
+$CLI
+$PUSHA
+if(CMPSTR(#amos_file_type_bin,#PCB_file_ext)){
+	$POPA
+	AH=1;
+	$JMP CHECK_EXT_DONE
+}
+if(CMPSTR(#amos_file_type_com,#PCB_file_ext)){
+	$POPA
+	AH=3;
+	$JMP CHECK_EXT_DONE
+}
+if(CMPSTR(#amos_file_type_txt,#PCB_file_ext)){
+	$POPA
+	AH=2;
+	$JMP CHECK_EXT_DONE
+}
+if(CMPSTR(#amos_file_type_asm,#PCB_file_ext)){
+	$POPA
+	AH=2;
+	$JMP CHECK_EXT_DONE
+}
+if(CMPSTR(#amos_file_type_c,#PCB_file_ext)){
+	$POPA
+	AH=2;
+	$JMP CHECK_EXT_DONE
+}
+$POPA
+AH=0;	
+CHECK_EXT_DONE:
+$STI
+}
+
+void EXECUTE_FILE()
+{
+/******************
+		Load and execute the file
+*******************/
+$PUSHA
+$CLI				//No interrupts during load
+//find_free_block();		//Find some memory
+
+AX=0x2000;				//AX points to memory address
+BX=0x0000;			//Offset
+DH=0x09;
+$INT 0x21			//Read file to memory
+
+$STI
+
+ES=0x2000;
+DS=0x2000;
+
+$PUSH 0x2000
+$PUSH 0x0000			//Jump to the program
+
+$RETF
+
+T_RETURN:
+//release_memory_block();		//Give it back	
+$POPA
+$STI
+}
+
+void EXECUTE_COM_FILE()
+{
+/******************
+		Load and execute the file
+*******************/
+$PUSHA
+$CLI				//No interrupts during load
+//find_free_block();		//Find some memory
+
+ES=0x2000;				//AX points to memory address
+$XOR DI,DI
+LPB:
+if(DI<0x080){
+ESBYTE[DI]=0x00;
+}else{
+ESBYTE[DI]=command_line[DI-0x080];	//copy comamnd line to program memory
+}
+com_memory_offset=DI;
+DI++;
+if(com_memory_offset<0x0100){		//offset 100h into sector
+	$JMP LPB
+}
+AX=ES;
+BX=com_memory_offset;
+DH=0x09;
+$INT 0x21				//Read file to memory
+
+$STI
+
+ES=0x2000;
+DS=0x2000;
+$PUSH 0x2000
+$PUSH 0x0100			//Jump to the program
+
+$RETF
+
+
+//release_memory_block();		//Give it back	
+$POPA
+$STI
+}
+
+void find_free_block()
+{
+/*
+		Find an empty block of memory
+*/
+if(first_block_open==0){
+	first_block_open=1;
+	AX=first_memory_block;
+	$JMP FREE_BLOCK_DONE
+}
+if(second_block_open==0){
+	second_block_open=1;
+	AX=second_memory_block;
+	$JMP FREE_BLOCK_DONE
+}
+if(third_block_open==0){
+	third_block_open=1;
+	AX=third_memory_block;
+	$JMP FREE_BLOCK_DONE
+}
+if(fourth_block_open==0){
+	fourth_block_open=1;
+	AX=fourth_memory_block;
+	$JMP FREE_BLOCK_DONE
+}
+if(fifth_block_open==0){
+	fifth_block_open=1;
+	AX=fifth_memory_block;
+	$JMP FREE_BLOCK_DONE
+}
+if(sixth_block_open==0){
+	sixth_block_open=1;
+	AX=sixth_memory_block;
+	$JMP FREE_BLOCK_DONE
+}
+FREE_BLOCK_DONE:
+}
+void release_memory_block()
+{
+/*
+	Return the free block to the pool
+*/
+if(AX==0x1000){
+	first_block_open=0;
+	$JMP RELEASE_DONE
+}
+if(AX==0x2000){
+	second_block_open=0;
+	$JMP RELEASE_DONE
+}
+if(AX==0x3000){
+	third_block_open=0;
+	$JMP RELEASE_DONE
+}
+if(AX==0x4000){
+	fourth_block_open=0;
+	$JMP RELEASE_DONE
+}
+if(AX==0x5000){
+	fifth_block_open=0;
+	$JMP RELEASE_DONE
+}
+if(AX==0x6000){
+	sixth_block_open=0;
+	$JMP RELEASE_DONE
+}
+RELEASE_DONE:
+}

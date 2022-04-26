@@ -1,0 +1,132 @@
+/*
+		INT.H--	 Interupt file for Amateur OS
+		Scott Billingsley	6/23/2001
+*/
+
+void hooked_timer()
+{
+
+$PUSH SI
+DS=CS;
+SI=#timer_count;
+AL=DSBYTE[SI];
+if(AL==18){
+	DSBYTE[SI]=0x00;
+}ELSE{
+	DSBYTE[SI]++;
+}
+
+$POP SI
+//end of interrupt
+$JMP FAR IntVectorSave 
+//Returns FAR back to program.
+
+}
+void int_timer()
+{
+DS=CS;
+$PUSH ES
+$PUSH DI
+$PUSH SI
+AX=0;
+ES=AX;
+$MOV EAX,ESDWORD[0x70]
+IntVectorSave=EAX;
+$PUSHF
+$CLI
+DI=0x70;	//offset of entry table
+AX=#hooked_timer;
+$STOSW
+AX=CS;
+$STOSW
+$POPF
+$STI
+$POP SI
+$POP DI
+$POP ES
+
+}
+
+interrupt int_20()
+{
+/*
+		System interrupt server.....
+*/
+if(DH==0x00){
+	AX=CS;
+	$PUSH AX
+	DS=CS;
+	$JMP shell 	//Return to calling program
+	$IRET
+}
+
+}
+
+interrupt int_21()
+{
+/*
+		File system interrupt server...
+*/
+if(DH==0x00)MOUNT_FLOPPY();
+if(DH==0x01)Load_BPB();
+if(DH==0x02)Decode_BPB();
+if(DH==0x03)ReadSectors();
+if(DH==0x04)ConvertLBA_CHS();
+if(DH==0x05)ConvertLBA();
+if(DH==0x06)reset_floppy();
+if(DH==0x07)GetFileName();
+if(DH==0x08)FileSearch();
+if(DH==0x09)read_file_to_memory(AX,BX);
+}
+
+interrupt int_22()
+{
+/*
+		Video interrupt server...
+		Uses WRITE.H-- routines..
+		and LOWIO.H--..
+*/
+if(DH==0x00)BEEP();
+if(DH==0x01)GOTOXY();		/*AL=xloc BL=yloc */
+if(DH==0x02)GOTOXYZ();		/*AL=xloc BL=yloc CL=page*/
+if(DH==0x03)GETXY();
+if(DH==0x04)GETXYZ();
+if(DH==0x05)WRITE();		//AL=char
+if(DH==0x06)WRITESTR(#newline);		//Cursor to new line
+if(DH==0x07)AMOS_WRITE();	//String to write to screen
+if(DH==0x08)WRITEWORD(AX);	//AX= word to write to screen
+if(DH==0x09)WRITEINT(AX);	//AX= int to write
+if(DH==0x0A)WRITEDWORD(EAX);	//EAX=dword to write
+if(DH==0x0B)WRITELONG(EAX);	//EAX=long to write
+if(DH==0x0C)WRITEDIGITS(AX);	//AX= digits to write
+if(DH==0x0D)WRITEHEX(AX);	//AX=hex word to write
+if(DH==0x0E)Clr();		//Clears the text mode screen
+if(DH==0x0F)Check_VGA();	//Checks for installed VGA,MCGA
+if(DH==0x10)SetVGA();		//Set VGA mode 12
+if(DH==0x11)SHOWVGA();		//AX=string to show,bx=attrib
+}
+interrupt int_23()
+{
+/*
+		Keyboard routines
+*/
+if(DH==0x00)ECHOREADSTR();	//Read a string AX=#buffer BX=sizeof buf		
+}
+interrupt int_24()
+{
+/*
+		Memory management
+*/
+}
+
+void init_int()
+{
+/*
+		Install the interupts....
+*/
+install_int(0x20,CS,#int_20);
+install_int(0x21,CS,#int_21);
+install_int(0x22,CS,#int_22);
+install_int(0x23,CS,#int_23);
+SHOW("Interrupts installed...\n");
+}

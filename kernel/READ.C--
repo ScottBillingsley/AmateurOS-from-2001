@@ -1,0 +1,130 @@
+/*
+		READ.C--	A simple text file reader
+		Scott Billingsley 2001
+		for Amateur OS
+*/
+?startaddress 0x0100
+?include "WRITE.H--"
+
+byte junk[100]=0x00;
+byte line_buffer[80]=0x00;
+
+byte string[100]=0x00;
+byte command[126]=0x00;
+byte badfile="File not found...\n";
+byte goodfile="\n <---Read for Amateur OS...>\n";
+byte press_key="\n <---Press a key....Esc to end--->\r";
+
+byte Buffer[0x6000]=0x00;
+
+void main()
+{
+
+DS=CS;
+//****** 	Read the file name from the command line...
+DI=0x080;		//Set DI to pont at command line
+SI=0x00;		//Zero SI for count
+LOADLINE:
+AL=DSBYTE[DI];		//Get a byte
+if(AL>0x20){		//Skip the program name by looking fot the
+	DI++;		//first space.
+	$JMP LOADLINE
+}
+DI++;			//Move over the space
+LOADLINE2:
+AL=DSBYTE[DI];		//Get a byte and store it in the buffer
+command[SI]=AL;
+DI++;
+SI++;
+if(DI<0x0100){
+	$JMP LOADLINE2
+}
+
+
+//	Phrase the file name  add spaces to pad to 8 characters
+//	remove "." and change to upper case.
+SI=#command;
+DH=0x07;
+$INT 0x21
+//	Search the directory for the file name..
+//	Return AH=1 if file was found.
+//	Start sector is stored in an internal buffer.
+DH=0x08;
+$INT 0x21
+//	If AH==1 then load file into buffer else jump out
+if(AH==1){
+	AX=CS;
+	BX=#Buffer;	
+	DH=0x09;
+	$INT 0x21
+
+}else{
+//		Print file not found and exit
+	SI=#badfile;
+	$JMP EXIT
+}
+DS=CS;
+
+	CX=20;			//Print 20 lines at a time
+	DI=#Buffer;		//Point to the buffer	
+HIJK:
+	SI=0x00;
+ABCD:	
+	line_buffer[SI]=DSBYTE[DI];	//Get a byte 
+	
+	if(line_buffer[SI]==0x09){	//If byte== tab then put in 4 spaces
+		line_buffer[SI]=0x20;
+		SI++;		
+		line_buffer[SI]=0x20;
+		SI++;
+		line_buffer[SI]=0x20;
+		SI++;		
+		line_buffer[SI]=0x20;
+		}
+	DI++;
+	SI++;
+	if(line_buffer[SI-1]==13)$JMP LMNO	//If the byte was a return jump
+	if(SI<80)$JMP ABCD		//If we're less than 80 get more	
+LMNO:
+	line_buffer[SI]=0;		//Put a zero at the end
+	$PUSH CX			//Save cx
+	SI=#line_buffer;
+	DH=0x07;
+	$INT 0x22		//Print line to the screen
+	$POP CX
+	$LOOP HIJK		//Loop for another line
+	$PUSH DI
+	$PUSH SI
+	$PUSHA	
+WRITELN();
+AX=0x0920;
+BX=0x0006;
+CX=0x0001;
+$INT 0x10				//Change color of text			
+		SI=#press_key;
+		DH=0x07;
+		$INT 0x22		//Print message
+AX=0x0920;
+BX=0x0007;
+CX=0x0001;
+$INT 0x10				//Change color back
+	$POPA
+	$POP SI
+	$POP DI	
+	AX=0x0000;
+	$INT 0x16			//Get a key press
+	if(AL==0x1B)$JMP ZYX		//If it's esc exit
+	CX=20;				//If not go back
+	$JMP HIJK
+
+ZYX:
+SI=#goodfile;
+EXIT:
+DH=0x07;
+$INT 0x22			//Print end line
+WRITELN();
+//*****		Exit back to Amateur OS
+DH=0x00;
+$INT 0x20
+
+}

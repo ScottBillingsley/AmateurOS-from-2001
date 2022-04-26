@@ -1,0 +1,60 @@
+
+/*      
+	Amateur.C-- : Main file for Amateur OS
+	Scott Billingsley 6/5/2001
+	This is my first attempt at an os
+*/
+
+? resize FALSE
+? startaddress 0
+? use80386
+? include "VAR.H--"
+? include "KEYCODES.H--"
+? include "SYS.H--"
+? include "INT.H--"
+? include "WRITE.H--"
+? include "FLAT.H--"
+? include "SHELL.H--"
+? include "LOWIO.H--"
+? include "FLOPPY.H--"
+? include "FILE.H--"
+? include "STRING2.H--"
+? include "INT_FILE.H--"
+? include "VGA.H--"
+
+
+int temp;
+byte filename[11]=0;
+// Do it for ever more....
+void main()
+{
+
+$CLI
+DS=CS;
+SS=CS+1;
+SP=0x4000;
+$STI
+
+SHOW("Starting Amateur OS...\n");                       //Show we're doing something
+
+SHOW("Kernel loaded....\n");    //Prepare to setup system..
+Check_VGA();
+if(BL==0X08){ 
+	SHOW("VGA card found..\n");
+$JMP CHECK_DONE
+}
+if(BL==0X0C){ 
+	SHOW("MCGA card found..\n");
+$JMP CHECK_DONE
+}
+ELSE{	SHOW("MCGA or VGA not found...\n");
+}
+CHECK_DONE:
+
+init_int();
+int_timer();
+$CALL shell
+
+}
+
+/* End of Amateur.c-- */

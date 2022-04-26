@@ -1,0 +1,222 @@
+/*
+	LowIO.H-- : Low rez screen stuff for Hotel OS
+	Scott Billingsley 6/5/2001
+*/
+
+
+void ECHOREADSTR()
+{
+/*
+		Reads a string from the keyboard and echos
+		it to the screen.
+		ECHORSTR(#buffer,size of buffer);
+		Command line buffer = 255 passed in BX.
+*/
+
+$PUSH CX
+$PUSH DX	//Save the registers
+DX=BX;
+BX=AX;		//Shift the data so we can use AX
+$XOR CX,CX	//Clear the count.
+EBEGIN:
+if(DX==CX){
+	$JMP EEND	//If we are at the end of the command line jump.
+}
+
+AX=BIOSREADKEY();	//Get a key
+if(AX==k_return){
+	$JMP EEND	//On enter jump to end
+}
+if(AX==k_up){
+	$JMP EBEGIN
+}
+if(AX==k_down){
+	$JMP EBEGIN
+}
+if(AX==k_left){
+	$JMP EBACK_SPACE
+}
+if(AX==k_right){
+	$JMP RARROW
+}
+if(AX==k_backspace){
+	$JMP EBACK_SPACE
+}
+if(AX==k_tab){
+	$JMP ETAB
+}
+if(AX==k_delete){
+	$JMP EBACK_SPACE
+}
+$DB 0x88,0x07			//mov [bx],al
+$INC CX
+$INC BX
+$PUSH BX
+WRITE(AL);
+$POP BX
+$JMP EBEGIN
+
+ETAB:
+AL=0x20;
+$DB 0x88,0x07
+$INC CX
+$INC BX
+$DB 0x88,0x07
+$INC CX
+$INC BX
+$DB 0x88,0x07
+$INC CX
+$INC BX
+$DB 0x88,0x07
+$INC CX
+$INC BX
+WRITESTR(" ");
+$JMP EBEGIN
+
+RARROW:
+AL=0x20;
+$DB 0x88,0x07
+$INC CX
+$INC BX
+WRITE(AL);
+$JMP EBEGIN
+
+EBACK_SPACE:
+if(CX==0x0000){
+	BEEP();
+	$JMP EBEGIN
+}
+$PUSH BX
+$PUSH CX
+AH=0x0F;
+$INT 0x10
+AH=0x03;
+$INT 0x10
+if(DL>0x00){
+	DL -= 1;
+}ELSE{
+	if(DH>0x00){
+		DL=79;
+		DH-=1;
+	}ELSE{
+		$POP CX
+		$POP BX
+		$JMP EBEGIN
+	}
+}
+AH=0x02;
+$INT 0x10
+$PUSHA
+WRITE(0x20);
+$POPA
+$INT 0x10
+$POP CX
+$POP BX
+$DEC CX
+$DEC BX
+$JMP EBEGIN
+
+EEND:
+AL=0x00;
+$DB 0x88,0x07
+$INC CX
+WRITELN();
+AX=CX;
+$POP DX
+$POP CX
+
+}
+
+void SHOW()
+{
+/*
+		Show a line of text passed in AX on the screen..
+*/
+$PUSH SI
+$PUSH DI
+SI=AX;
+AH=0xE;
+BX=0x00;
+UP:
+$LODSB
+$CMP AL,0
+$JZ DOWN
+$MOV BL,4
+$INT 0x10
+$JMP SHORT UP
+DOWN:
+$POP DI
+$POP SI
+}
+
+void AWRITESTR()
+{
+/*
+		Show a line of text passed in BX on the screen..
+*/
+$PUSH BX
+$PUSH SI
+SI=AX;
+AH=0xE;
+BX=0x0007;
+AUP:
+$LODSB
+$CMP AL,0
+$JZ ADOWN
+$INT 0x10
+$JMP SHORT AUP
+ADOWN:
+$POP SI
+$POP BX
+$RET
+}
+
+void Clr() 
+{
+/*
+	Scrolls all text off the screen and set the 
+	cursor to upper left (X,Y)=(0,0).
+*/
+$PUSH CX		//Save the current registers
+$PUSH DX
+$MOV AH,0xF		//Get current display mode.. AL=mode AH=#columns
+$INT 0x10
+$CMP AL,7		//If graphic mode is 4,5,6 then exit
+$JE CLEAR0
+$CMP AL,3		//If mode is 0-3 or 7 then go on
+$JA CLEAR9
+CLEAR0:
+$XOR CX,CX		//Set the upper left to (X,Y)=(0,0)
+$MOV DH,24		//Set Y to 24 for lower right
+$MOV DL,AH
+$DEC DL			//Set X to # of columns returned by BIOS -1
+$MOV BH,7		//Set screen attrib to normal..ie"white on black"
+$MOV AX, 0x0600		//Function 6
+$INT 0x10
+$MOV AH, 0x2		//Set new cursor to (X,Y)=(0,0)
+$MOV BH, 0
+$XOR DX,DX		//Set page to 0
+$INT 0x10
+CLEAR9:
+$POP CX			//Restore the registers
+$POP DX 
+}
+AMOS_WRITE()
+{
+/*
+			Writes a line of text pointed to
+			by SI....Used by INT 22..
+*/
+AH=0xE;
+BX=0x00;
+UP:
+$LODSB
+$CMP AL,0
+$JZ DOWN
+$MOV BL,4
+$INT 0x10
+$JMP SHORT UP
+DOWN:
+}
+
+/*	End of LOWIO.H--	*/

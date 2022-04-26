@@ -1,0 +1,132 @@
+/*
+		FLAT.H--	Routine to setup flat real mode
+		Scott Billingsley 	6/23/2001
+*/
+?define CR0 CRP
+?define CR1 CRQ
+
+
+byte GDT[8]={0xF,0x00,0X00,0X00,0XFFFF,0x00,0x9200,0x8F};
+byte GDT_Offs[8]={0x00,0x00,0x00,0x00,0x00,0x00};
+
+
+:void LGDT()
+{
+/*
+		Load the GDT...
+		@LGDT();
+*/
+$ DB 0X0F,0X01,0X16
+}
+:void FS_MOV_EAX()
+{
+/*
+		32 bit mov EAX to FS:EDI
+		@FS_MOV_EAX();
+*/
+$ DB 0X64,0X66,0X67,0X89,0X07
+}
+:void MOVZX_EAX_AX()
+{
+/*
+		32 bit MOV AX to EAX
+		@MOVZX_EAX_AX();
+*/
+$ DB 0X66,0X0F,0XB7,0XC0
+}
+:void MOVZX_EBX_BX()
+{
+/*
+		32 bit MOV BX to EBX..
+		@MOVZX_EBX_BX();
+*/
+$ DB 0X66,0X0F,0XB7,0XDB
+}
+:void MOVZX_ECX_CX()
+{
+/*
+		32 bit MOV CX to ECX
+		@MOVZX_ECX_CX();
+*/
+$ DB 0X66,0X0F,0XB7,0XC9
+}
+:void MOVZX_EDI_DI()
+{
+/*
+		32 bit MOV DI to EDI
+		@MOVZX_EDI_DI();
+*/
+$ DB 0X66,0X0F,0XB7,0XFF
+}
+
+
+byte Enable_Flat()
+{
+/*
+		Enable the real flat mode and install the GDT
+*/
+$CLI				//Kill the interrupt
+$PUSH DS
+$PUSH ES			//Save the registers
+AL=8;
+DSBYTE[#GDT_Offs]=AL;
+$XOR EAX,EAX
+AX=DS;
+$SHL EAX,4;			//Divide EAX by 4
+BX=#GDT;			//Address of the GDT into BX
+@MOVZX_EBX_BX();		//Move BX into EBX
+$ADD EAX,EBX
+$MOV DSDWORD[#GDT_Offs+0x02],EAX
+@LGDT();			//Load the GDT
+$ DB #GDT_Offs
+DX=0x08;
+$MOV EAX,CR0
+$ DB 0x66,0x83,0xC8,0x01
+$INC AX
+$MOV CR0,EAX
+$JMP SHORT PMODE		//Protexted mode on
+$NOP
+PMODE:
+ES=DX;
+DS=DX;
+$AND AX,0xFE
+$MOV CR0,EAX
+$JMP SHORT RMODE		//Real mode back on...
+$NOP
+RMODE:
+$POP ES
+$POP DS
+$XOR AL,AL
+$STI
+}
+
+void TestMem()
+{
+/*
+				Fills a portion of memory to 
+				test for real flat mode..
+*/
+$PUSH DI
+$ DB 0X66,0XB8,0X00,0X00,0X00,0X00,0X66,0X8E
+$ DB 0XE0,0X66,0XD8,0X80,0X84,0X1E,0X00,0X66
+$ DB 0X8E,0XE8
+$MOV CX,100
+AGAIN:
+$MOV AL,FSBYTE[0X0]
+$MOV AH,AL
+$NOT AL
+$MOV BL,AL
+$MOV AL,GSBYTE[0X10]
+$MOV GSBYTE[0X10],BL
+$CMP AH,FSBYTE[0X0]
+$MOV GSBYTE[0X10],AL
+$LOOP AGAIN
+$JZ DONE
+$MOV AL,1
+$JMP OVER
+DONE:
+$MOV AL,0
+OVER:
+$POP DI
+}	
+

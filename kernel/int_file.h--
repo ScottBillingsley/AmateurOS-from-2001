@@ -1,0 +1,169 @@
+/*
+		INT_FILE.H--	Interrupt file routines for Amateur OS
+		Scott Billingsley 2001
+Routines in this file:
+
+GetFileName()
+	Input 	SI pointer to file name
+	Output 	SI pointer to file name minus "." 
+FileSearch()
+	Input 	SI pointer to file name minus "."
+	Output	Carry flag on error
+		ES:DI point to start sector on success
+ReadFile2Memory()
+	Input	ES:BX pointer to buffer
+		AX assumes start sector from FileSearch
+	Output	X secotors read into buffer
+*/
+
+byte GetFileNameBuffer[12]=0;
+
+void GetFileName()
+{
+/*
+		Get the file name pointed to by SI and
+		return a pointer to filename minus ".".
+		Input 	SI pointer to filename.
+		Output 	SI pointer to filename.
+*/
+
+$PUSH AX
+$PUSH BX
+$PUSH CX
+$PUSH DX
+$PUSH ES
+$PUSH DI
+DI=#GetFileNameBuffer;
+CX=12;
+STORENAME:
+$LODSB				//Load a byte from SI
+if(AL==0x00){			//If it's zero jump	
+	$JMP STORE_OK
+}
+if(AL==0x2E){			//If it's "." skip store
+PADNAME:
+	if(CX>0x04){
+	DSBYTE[DI]=0x20;
+	DI++;
+	CX--;
+	$JMP PADNAME
+	}else{
+	$JMP STORENAME}
+}
+DSBYTE[DI]=AL;			//Store in DS:DI
+DI++;
+$LOOP STORENAME
+STORE_OK:
+STR_UP(#GetFileNameBuffer);	//Make it upper letters
+SI=#GetFileNameBuffer;		//Point SI at the buffer
+
+$POP DI
+$POP ES
+$POP DX
+$POP CX
+$POP BX
+$POP AX
+}
+
+void FileSearch()
+{
+$CLI
+
+PCB_file_sector=0x00;
+ES=0x8000;		//Point ES
+CX=MaxRootEntries;      //Number of names
+DI=0x400;		//Offset
+SI=0x00;
+fPCB_LOOP:
+AL=ESBYTE[DI];			//get a byte
+if(AL==0xE5){			//if it equals 0x05 dir is erased
+$JMP fLOAD_PCB_DONE		//jump out
+}
+if(AL==0x00){			//if al equals 0 dir is empty
+$JMP fLOAD_PCB_DONE		//Check for empty dir
+}
+file_search_name[SI]=AL;
+DI++;
+SI++;
+$CMP SI,0x0B
+$JNE fPCB_LOOP
+$ADD DI,15
+PCB_file_sector=ESWORD[DI];	//Store the start sector
+$ADD DI,2
+PCB_file_size=ESDWORD[DI];	//Store the size
+SI=0x00;
+$PUSHA
+
+if(CMPSTR(#file_search_name,#GetFileNameBuffer)){  	//See if file matchs command line
+	$POPA
+	AH=1;
+	$JMP fLOAD_PCB_DONE	//if so set AH and jump out
+}
+$POPA
+$ADD DI,0x0004			//if not do it again
+CX--;
+if(CX>0x00){
+	$JMP fPCB_LOOP		
+}
+AH=0;
+fLOAD_PCB_DONE:
+$STI
+}
+void read_file_to_memory(word segment; word offset)
+{
+/*
+		Reads a file into memory ES:BX
+*/
+
+$PUSHA
+$CLI				//No interrupts during load
+DH=0x01;			//Load the BPB
+$INT 0x21			
+DH=0x02;			//Decode the BPB
+$INT 0x21
+$XOR CX,CX
+$XOR DX,DX
+AX=0x0020;			//32 bytes per entry
+$MUL MaxRootEntries		//AX=total dir size
+$DIV BytesPerSector		//AX=# of sectors
+AX><CX;
+AL=TotalFATs;
+$MUL SectorsPerFAT
+$ADD AX,ReservedSectors
+DataSector=AX;
+$ADD DataSector,CX
+
+//DataSector=0x21;
+DriveNumber=0x0;
+
+ES=segment;
+memory_offset=offset;
+
+LOAD_FILE:
+AX=PCB_file_sector;		//Get the start of the file
+BX=memory_offset;
+ConvertLBA();			//Change clusters into sectors
+$PUSHA
+ConvertLBA_CHS();
+$POPA
+$XOR CX,CX
+CL=SectorsPerCluster;
+load_sector(ES,memory_offset);			//Read a sector
+memory_offset=BX;
+
+$PUSH ES
+find_next_sector();
+$POP ES
+
+//$PUSHA
+//WRITEHEX(ReservedSectors);
+//WRITEHEX(BX);
+//WRITE(0x20);
+//$POPA
+
+if(AH==1){
+	$JMP LOAD_FILE
+}
+$POPA
+$STI
+}

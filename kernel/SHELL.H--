@@ -1,0 +1,198 @@
+/*
+		SHELL.H--	Basic shell for Amateur OS
+		Scott Billingsley 7/2001
+*/
+
+void get_cmd_line()
+{
+/*
+		Get the keyboard input from the command line.
+*/
+WRITESTR("shell : ");
+ECHOREADSTR(#command_line,255);
+}
+
+void check_cmd_line()
+{
+/*
+		Compair the command line with known commands.
+*/
+if(AX==1){
+	$JMP NO_COMMAND
+}
+
+if(CMPSTR(#command_line,#amos_about)){
+	amos_about_cmd();
+}else
+if(CMPSTR(#command_line,#amos_info)){
+	amos_about_cmd();
+}else
+if(CMPSTR(#command_line,#amos_help)){
+	amos_help_cmd();
+}else
+if(CMPSTR(#command_line,#amos_reboot)){
+	amos_reboot_cmd();
+}else
+if(CMPSTR(#command_line,#amos_clr)){
+	amos_clr_cmd();
+}else
+if(CMPSTR(#command_line,#amos_dir)){
+	amos_dir_cmd();
+}else
+if(CMPSTR(#command_line,#amos_ver)){
+	amos_ver_cmd();
+}else
+if(CMPSTR(#command_line,#amos_time)){
+	amos_display_time();
+}else
+if(CMPSTR(#command_line,#amos_date)){
+	amos_display_date();
+}else
+if(CMPSTR(#command_line,#amos_test)){
+	amos_test_cmd();
+}else{
+	MOUNT_FLOPPY();
+	Load_PCB();
+	if(AH==1){
+		Check_EXT();
+		if(AH==2){
+		WRITESTR("    Only bin and com files supported for now.\n");
+		$JMP NO_COMMAND
+		}else
+		if(AH==3){
+		EXECUTE_COM_FILE();
+		}else
+		if(AH==1){
+		EXECUTE_FILE();
+		$JMP NO_COMMAND
+		}else
+		if(AH==0){
+		WRITESTR("    Unknown file type\n");
+		$JMP NO_COMMAND
+		}	
+	}else{
+		WRITESTR("    Unknown command \n");
+	}
+}
+NO_COMMAND:
+
+}
+
+void shell()
+{
+/*
+		The shell command
+*/
+GO_CIRCLE:
+DS=CS;
+get_cmd_line();
+check_cmd_line();
+$JMP GO_CIRCLE
+}
+
+void amos_about_cmd()
+{
+DI=#image_about;
+AH=0x1F;
+BOX_WRITE();
+DI=#newline;
+AH=0x07;
+BOX_WRITE();
+}
+
+void amos_help_cmd()
+{
+WRITESTR("Known commands :\n");
+WRITESTR("about.......About Amateur OS\n");
+WRITESTR("clr.........Clear the screen\n");
+WRITESTR("help........This help screen\n");
+WRITESTR("time........Gets the BIOS time\n");
+WRITESTR("date........Gets the BIOS date\n");
+WRITESTR("reboot......Reboot the computer\n");
+WRITESTR("ver.........Prints kernel version \n");
+WRITESTR("dir.........List the directory on floppy\n");
+}
+void amos_reboot_cmd()
+{
+DS=0x00;
+DSWORD[0x472]=0x1234;
+$JMP FAR 0xFFFF:0000
+}
+void amos_clr_cmd()
+{
+DH=0x0E;
+$INT 0x22
+}
+void amos_dir_cmd()
+{
+MOUNT_FLOPPY();
+Print_DIR();
+}
+void amos_ver_cmd()
+{
+WRITESTR("    ");
+WRITESTR(#version);
+WRITELN();
+}
+void amos_display_time()
+{
+$PUSH ES
+ES=DS;
+DI=#time_display;
+AH=0x02;
+$INT 0x1A
+$XOR AX,AX		//clear AX
+AL=CH;
+BCD_ASCII();
+AL= 0x3A;
+$STOSB
+AL=CL;
+BCD_ASCII();
+AL= 0x3A;
+$STOSB
+AL=DH;
+BCD_ASCII();
+AL=0;
+$STOSB
+WRITESTR("    ");
+WRITESTR(#time_display);
+WRITELN();
+$POP ES
+}
+void amos_display_date()
+{
+$PUSH ES
+ES=DS;
+DI=#date_display;
+AH=0x04;
+$INT 0x1A
+$XOR AX,AX		//clear AX
+AL=DH;
+BCD_ASCII();
+AL=0x2D;
+$STOSB
+AL=DL;
+BCD_ASCII();
+AL=0x2D;
+$STOSB
+AL=CH;
+BCD_ASCII();
+AL=CL;
+BCD_ASCII();
+AL=0;
+$STOSB
+WRITESTR("    ");
+WRITESTR(#date_display);
+WRITELN();
+$POP ES
+}
+void amos_test_cmd()
+{
+ES=0x3000;
+CX=0x200;
+DI=0x00;
+ABD:
+WRITE(ESBYTE[DI]);
+$LOOP ABD
+
+}
