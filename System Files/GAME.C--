@@ -1,0 +1,234 @@
+/*
+		GAME.C--		old arcade style shooting
+					game...Done in text mode.
+		Scott Billingsley 	2001
+		Sphinx C--
+*/
+
+byte tank="ÜÛÜ";
+byte tank_mov=40;
+byte old_tank="   ";
+byte ship="®þÛþ¯";
+byte old_ship="     ";
+byte ship_return_x=0;
+byte ship_return_y=0;
+byte bomb="*";
+byte old_bomb=" ";
+byte bomb_x=0;
+byte bomb_y=23;
+byte do_bomb=0;
+byte tank_x=40;
+byte tank_y=24;
+byte ship_x=0;
+byte ship_y=10;
+byte boom_x=0;
+byte boom_y=0;
+
+byte score=0x00;
+dword IntVectorSave=0;
+byte end_message=" Thanks for play my game.\n"
+		 " Scott Billingsley 2001 \n"
+		 " for Amateur OS  \n";
+
+?include "WRITE.H--"
+?include "RANDOM.H--"
+
+void HookVector()
+{
+/*
+		Routine called on the interrupt.
+		Aprox. 18 times a second.
+*/
+$PUSH SI		//Save SI
+DS=CS;
+show_score();
+SI=#ship_x;		//SI equals the address of count
+$ADD DSBYTE[SI],1	//Add 1 to count
+if(ship_x==76){
+	ship_return_x=ship_x;
+	ship_return_y=ship_y;	//Save the last ship pos
+	random_y();
+	ship_x=0;
+}
+draw_ship(ship_x,ship_y);
+if(do_bomb==1){
+	bomb_y=bomb_y-1;
+	draw_bomb(bomb_x,bomb_y);
+}
+AX=ship_x-1;
+if(bomb_x > AX){
+	AX=ship_x+6;
+	if(bomb_x < AX){
+		if(bomb_y==ship_y){
+			bomb_hit();
+			random_y();
+		}
+	}
+}
+
+$POP SI			//Return SI
+$JMP FAR IntVectorSave  	//Turn control back to old ISR to keep
+			//the computer running right.
+}
+			//Old ISR does a return FAR back to program.
+void random_y()
+{
+AX=RAND()%15;		//Random number between 0 and 15
+$ADD AX,6		// "       "        "   5 and 20
+ship_y=AL;
+}
+
+void show_score()
+{
+GOTOXY(65,1);
+WRITEINT(score);
+}
+
+void bomb_hit()
+{
+GOTOXY(ship_x,ship_y);		//Go to ship
+WRITESTR("BOOM!!");		//Print boom
+boom_x=ship_x;			//Save place
+boom_y=ship_y;
+score+=1;
+bomb_x=0;
+bomb_y=23;
+do_bomb=0;
+ship_x=0;
+ship_y=10;			//Reset bomb, ship and add score
+}
+
+void draw_bomb(byte bomb_x_pos;byte bomb_y_pos)
+{
+if(bomb_y==5){
+	GOTOXY(bomb_x,bomb_y+1);
+	WRITESTR(#old_bomb);
+	do_bomb=0;
+	bomb_y=23;
+	$JMP BOMB_DONE
+}else{
+GOTOXY(bomb_x,bomb_y+1);
+}
+WRITESTR(#old_bomb);
+GOTOXY(bomb_x_pos,bomb_y_pos);
+WRITESTR(#bomb);
+BOMB_DONE:
+}
+
+void draw_ship(byte ship_x_pos; byte ship_y_pos)
+{
+if(ship_x==5){
+	GOTOXY(boom_x,boom_y);
+	WRITESTR("      ");
+}
+if(ship_x==0){
+	GOTOXY(ship_return_x-1,ship_return_y);
+}else{
+GOTOXY(ship_x-1,ship_y);
+}
+WRITESTR(#old_ship);
+GOTOXY(ship_x_pos,ship_y_pos);
+WRITESTR(#ship);
+}
+
+void draw_tank(byte tank_x_pos)
+{
+//	Draws a new tank and erases old.. 
+GOTOXY(tank_x,tank_y);
+WRITESTR(#old_tank);
+GOTOXY(tank_x_pos,tank_y);
+tank_x=tank_x_pos;
+WRITESTR(#tank);
+$XOR AX,AX				//Clear AX
+}
+
+void main()
+{
+DS=CS;
+$PUSH ES
+$PUSH DI
+$PUSH SI		//Save the regiesters
+AX=0;
+ES=AX;			//Set ES 
+$MOV EAX,ESDWORD[0x70]		//Move a dword from the offset of the interrupt.
+IntVectorSave=EAX;		//0x70 = 0x1C*4   , Save it
+$PUSHF
+$CLI			//Turn off interrupts.
+DI=0x70;			//Offset for our routine.
+AX=#HookVector;		//Point AX to the address of our routine.
+$STOSW			//Store a word into the vector table
+AX=CS;			//Where our routine lives.
+$STOSW			//Store that too.
+$POPF
+$STI			//Restore interrupts
+$POP SI
+$POP DI
+$POP ES
+RANDOMIZE();				//Seed the random number
+
+WINDOWUP(0x00,0x03,0x0000,0x1950);	//Clear the screen
+AH=0x01;
+CX=0x2000;
+$INT 0x10				//Turn cursor off
+draw_tank(tank_mov);			//Draw first tank
+GOTOXY(56,1);
+WRITESTR("SCORE :");
+
+do{
+DS=CS;
+NO_KEY:
+AX=0x0100;
+$INT 0x16
+$JZ NO_KEY
+
+if(AL==0x1B){				//if esc was pressed leave
+	$JMP EXIT
+}
+
+if(AH==0x4B){				//Left arrow move tank left
+	tank_mov=tank_mov-1;
+	if(tank_mov==0)tank_mov=1;
+	draw_tank(tank_mov);
+	$JMP SKIP
+}
+if(AH==0x4D){				//right arrow move tank right
+	tank_mov=tank_mov+1;
+	if(tank_mov==77)tank_mov=76;
+	draw_tank(tank_mov);
+	$JMP SKIP
+}
+if(AL==0x20){				//Shift key...SHOT!!
+	bomb_x=tank_x+1;
+	do_bomb=1;
+	$JMP SKIP
+}
+
+SKIP:
+ES=0x0000;
+ESWORD[0x041C]=ESWORD[0x041A];
+
+}while(TRUE);
+
+EXIT:		
+AX=0x0000;
+$INT 0x16				//Clear the last key from buffer
+AH=0x01;
+CX=0x0607;
+$INT 0x10				//Turn cursor back on
+$PUSH ES		
+AX=0x00;
+ES=AX;			//Set ES
+$PUSHF
+$CLI			//Turn off interrupts
+EAX=IntVectorSave;
+$MOV ESDWORD[0x70],EAX		//Restore the old interrupt vector.
+$POPF
+$POP ES
+$STI			//Turn interrupts back on.
+WINDOWUP(0x00,0x07,0x0000,0x1950);	//Clear the screen
+GOTOXY(0,0);
+WRITESTR(#end_message);
+//DH=0x00;
+//$INT 0x20
+$RET
+}

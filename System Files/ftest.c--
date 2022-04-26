@@ -1,0 +1,77 @@
+
+byte buffer[80]=0;
+byte message="Input file name  : ";
+byte newline="\n";
+byte goodfile="File found...";
+byte badfile="File not found...";
+byte command[0x100]=0;
+
+void main()
+{
+DS=CS;
+
+DI=0x080;		//Set DI to pont at command line
+SI=0x00;		//Zero SI for count
+LOADLINE:
+AL=DSBYTE[DI];		//Get a byte
+if(AL>0x20){		//Skip the program name by looking fot the
+	DI++;		//first space.
+	$JMP LOADLINE
+}
+DI++;			//Move over the space
+LOADLINE2:
+AL=DSBYTE[DI];		//Get a byte and store it in the buffer
+command[SI]=AL;
+DI++;
+SI++;
+if(DI<0x0100){
+	$JMP LOADLINE2
+}
+
+//	Print the meassage to the screen..
+SI=#command;
+DH=0x07;
+$INT 0x22
+
+
+//	Get the file name 
+//AX=#buffer;
+//BX=80;
+//DH=0x00;
+//$INT 0x23
+
+//	Phrase the file name  add spaces to pad to 8 characters
+//	remove "." and change to upper case.
+SI=#command;
+DH=0x07;
+$INT 0x21
+
+
+DH=0x08;
+$INT 0x21
+if(AH==1){
+	SI=#goodfile;
+}else{
+	SI=#badfile;
+}
+DH=0x07;
+$INT 0x22
+
+
+//	Print the results on the screen
+//DH=0x07;		//SI equals filename
+//$INT 0x22
+
+
+EXIT:
+//	Print a new line and carriage return
+SI=#newline;
+DH=0x07;
+$INT 0x22
+
+//	Exit to Amos
+DH=0x00;
+$INT 0x20
+
+
+}

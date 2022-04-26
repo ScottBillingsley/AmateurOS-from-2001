@@ -1,0 +1,227 @@
+/*
+		TERM.C--	A simple terminal program
+		Scott Billingsley 2001
+		Amateur OS
+*/
+?startaddress 0x100
+?include "WRITE.H--"
+?include "VGA.H--"
+
+
+word comport=0x03F8; 				
+
+byte brag_line="Simple Terminal Program";
+byte help_line="<-- Press F1 for help -->";
+byte esc_line="<-- Press Esc to quit -->";
+
+byte cursor_top_x=0;		//------------------------------
+byte cursor_top_y=1;		//1,0 top_window_upper
+byte cursor_bot_x=0;		//
+byte cursor_bot_y=19;		//
+word top_window_upper=0x0100;	//	
+				//
+word top_window_lower=0x0F4F;	//
+				//	top_window_lower 15,80
+word bot_window_upper=0x1300;	//------------------------------
+				//	Status line
+word bot_window_lower=0x184F;	//------------------------------
+				//19,0 bot_window_upper
+				//	  bot_window_lower 24,80
+				//------------------------------
+
+byte info_screen="                Term.com\n"
+                 "                Scott Billingsley 2001\n"
+                 "                for Amateur OS\n"
+                 "                written in Sphinx C--\n"
+		 "\n"
+    		 "    Term.com is a simple terminal program. It was writen in Sphinx C--\n"
+		 " for Amateur OS.\n"
+    		 "    Term is setup for COM1 9600:8n1.. If you need other parms they can\n"
+		 " be changed and the program recompiled.\n"
+    		 "    All keys are passed to the comport, so the Ctrl keys should work\n"
+		 " for you TNC or modem.\n";
+
+
+void Info()
+{
+$PUSHA
+AH=0x05;
+AL=0x01;
+$INT 0x10			//Video page 1
+
+AH=0x00;
+$INT 0x16
+AH=0x05;
+AL=0x00;
+$INT 0x10
+$POPA
+}
+
+void main()
+{
+DS=CS;
+
+	AH=0x05;
+	AL=0x01;
+	$INT 0x10			//Video page 1
+WINDOWUP(0x00,0x07,0x0000,0x1950);
+WRITESTR(#info_screen);
+
+AH=0x05;
+AL=0x00;
+$INT 0x10			//Video page 0
+
+WINDOWUP(0x00,0x07,0x0000,0x1950);
+GOTOXY(25,0);
+AH=0x02;
+DI=#brag_line;
+BOX_WRITE();
+GOTOXY(0,16);
+AL=0xCD;
+BX=0x4F;
+AH=0x03;
+BOX_DRAW();
+GOTOXY(2,17);
+BX=0x02;
+AX=#help_line;
+SHOWVGA();
+GOTOXY(52,17);
+BX=0x02;
+AX=#esc_line;
+SHOWVGA();
+GOTOXY(0,18);
+AL=0xCD;
+BX=0x4F;
+AH=0x03;
+BOX_DRAW();
+
+/***
+	Initialize the 8250 UART for:
+	8 bits, 1 stop, No parity and 1200 baud
+*/
+DX=comport+3;		//Address of line control register
+AL=0x80;
+$OUT DX,AL		//To address baud rate divisor
+DX=comport;		//Address LSB
+AL=0x0C;		//LSB for 9600 baud
+$OUT DX,AL 
+DX=comport+1;		//Address MSB
+AL=0x00;		//MSB for 9600 baud
+$OUT DX,AL
+/***
+	Initialize the line control register
+*/
+DX=comport+3;		//Address of line control register
+AL=0x03;		//8 bit, no parity, 1 stop
+$OUT DX,AL
+/***
+	Initialize the modem control register for:
+	Request to send and data terminal ready signals
+	adn set loopback
+*/
+DX=comport+4;		//Address of modem control
+AL=0x00;		//disable signals
+$OUT DX,AL
+/***
+	Now diable all four classes of interrupts
+*/
+DX=comport+1;		//Address of interrupt enable register
+AL=0x00;
+$OUT DX,AL
+/*
+	8250 now setup
+*/
+FOREVER:
+
+DX=comport+5;		//Address of status register
+$IN AL,DX		//Get the status in Al
+$TEST AL,0x1E		//test for a reception error
+if(NOTZEROFLAG){
+	$JMP ERROR
+	}
+$TEST AL,0x01		//test for recieved data ready
+if(NOTZEROFLAG){
+	$JMP RECEIVE		//receive handling
+	}
+$TEST AL,0x20		//Test for transmit holding register empty
+$JZ FOREVER		//If the 8250 is not ready for another character
+			//to transmit then loop..
+//If 8250 is ready for another byte check keyboard for byte..
+AH=0x01;
+$INT 0x16		//Check keyboard buffer
+$JZ FOREVER		//If no key loop back
+// Get byte from keyboard buffer
+GOTOXY(cursor_bot_x,cursor_bot_y);
+AH=0x00;
+$INT 0x16		//Byte in AL
+DX=comport;		//Address of transnit holding register
+$OUT DX,AL		//Send the byte to the output
+	if(AX==0x3B00){
+		Info();
+		$JMP NEWLINE
+	}
+$PUSHA
+$POPA
+	if(AL==0x1B){
+		$JMP EXIT
+	}
+	if(AL==0x0D){
+		if(cursor_bot_y==23){
+			AX=0x0601;
+			BH=0x07;
+			CX=bot_window_upper;
+			DX=bot_window_lower;
+			$INT 0x10
+			WRITE(0x0D);	
+			$JMP NEWLINE
+		}
+
+		WRITE(0x0D);
+		WRITE(0x0A);
+		$JMP NEWLINE
+	}
+WRITE(AL);
+NEWLINE:
+GETXY();
+cursor_bot_y=AH;
+cursor_bot_x=AL;
+$JMP FOREVER		//Do it again
+
+// Receive section..
+RECEIVE:
+GOTOXY(cursor_top_x,cursor_top_y);//move to cursor position
+DX=comport;			//Address of receive data register
+$IN AL,DX			//Byte in Al
+//$AND AL,0x7F			//Becaue there are only 7 bits of data the high
+				//order bit is not valid
+WRITE(AX);
+GETXY();
+cursor_top_y=AH;		//store new cursor and row
+cursor_top_x=AL;
+		if(cursor_top_y==15){
+			AX=0x0601;
+			BH=0x07;
+			CX=top_window_upper;
+			DX=top_window_lower;
+			$INT 0x10
+			cursor_top_y--;		
+			
+			}
+
+$JMP FOREVER
+
+// Error section....
+ERROR:
+DX=comport;		//Address of receive data register
+$IN AL,DX
+AL='?';
+BX=0x00;
+AH=0x14;
+$INT 0x10
+$JMP FOREVER
+
+EXIT:
+//$RET
+DH=0x00;
+$INT 0x20	
+}
