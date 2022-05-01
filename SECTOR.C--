@@ -1,0 +1,280 @@
+/*
+ Information
+ ßßßßßßßßßßß
+
+  Program Title : SECTOR
+  External name : SECTOR.COM
+  Version       : 1.0
+  Start date    : 6/30/2001
+  Last update   : 6/30/2001
+  Author        : Scott Billingsley
+  Copyright     : freeware
+  Description   : Reads a sector from disk into a file.
+		  User can input disk,head,cylinder,sector.
+  Language	: Sphinx C--
+*/
+
+? include "WRITE.H--"
+? define BUFFSIZE 512
+
+int drive=0;
+byte filename[13];
+word filehandle;
+int head=0;
+int cylinder=0;		//Or Tracks 80 per disk
+int sector=0;		//18 sectors per track
+int temp=0;
+byte Buffer[BUFFSIZE]="0";	//Set buffer to size by setting it to zero
+
+
+void main()
+{
+WRITESTR("\nSECTOR   Writes a sector from disk to file.\n");
+WRITESTR("Writen by Scott Billingsley in Sphinx C-- \n");
+WRITESTR("\n\n");
+WRITESTR("File name to save to       : ");
+$PUSH DI
+$XOR DI,DI			//Clear the counter
+GETKEY:
+	$MOV AH,0x0	
+	$INT 0x16		//Get a key
+	$CMP AL,0xD		//Is it enter
+	$JE KEY_DONE		//If so jump out
+	$MOV AH,0x0E
+	$INT 0x10		//Put the char on the screen
+	$CMP AL,0x08		//Is it a backspace
+	$JE BACKSPACE		//If so jump 
+	$MOV filename[DI],AL	//Store the letter
+	$INC DI			//Add for next letter
+BACK:	$JMP GETKEY
+BACKSPACE:
+	$DEC DI			//Move back a letter
+	$JMP BACK		//Get the next key
+KEY_DONE:
+	$INC DI			//Move passed the last letter
+	$XOR AL,AL
+	$MOV filename[DI],AL	//Terminate with a zero
+
+$POP DI				//Reset the stack
+
+OPENFILE:
+$CLC
+$MOV AX,0x3D02
+$MOV DX,#filename
+$INT 0x21
+
+
+$MOV filehandle,AX		//Save the file handle
+if( CARRYFLAG ){
+	$CMP AX,2
+	WRITESTR("\nERROR: File open error.....");
+	$JNZ OPENFILE
+	WRITESTR("\nCreating file..............");
+	$MOV CX,0
+	$MOV AH,0x3C
+	$INT 0x21		//Call dos to make the file
+	$JMP OPENFILE
+	}
+ELSE{
+	WRITESTR("\nFile opened OK.............");
+}
+
+WRITESTR("\nLetter of drive to read    : ");
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$MOV AH,0x0E
+	$MOV BH,0
+	$INT 0x10		//Show it
+	$CMP AL,0x41
+	$JE ADRIVE
+	$CMP AL,0x61		//Is it A or a
+	$JE ADRIVE
+	$CMP AL,0x0
+	$JE ADRIVE
+	WRITESTR("\nDrives other than A not supported yet..\n");
+	$JMP FINISHED
+ADRIVE:
+	drive=0;
+
+HEAD:
+WRITESTR("\nNumber of head to read     : ");
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$MOV AH,0x0E
+	$MOV BH,0
+	$INT 0x10		//Show it
+	$SUB AL,48		//ASCII value of 1 is 49
+				//49-48=1  48-48=0
+	$CMP AL,2
+	$JL HEAD0
+	WRITESTR("\nOnly heads 0 and 1 supported now..\n");
+	$JMP HEAD
+HEAD0:
+	head=AL;	
+CYLINDER:
+WRITESTR("\nNumber of cylinder or track: ");
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$CMP AL,13
+	$JE BADKEY		//If the first key is enter Fuss...
+	$MOV AH,0x0E
+	$MOV BH,0
+	$INT 0x10		//Show it
+	$SUB AL,48
+	$CMP AL,0
+	$JL BADKEY
+	$CMP AL,9
+	$JG BADKEY		//If key is less than 0 or greater than 9
+	$JMP FIRST		//It must be a letter
+BADKEY:
+	WRITESTR("\nKey not 0 thru 9...");
+	$JMP CYLINDER		//Try again
+FIRST:
+cylinder=AL;
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$CMP AL,13
+	$JE FOURTH		//If enter Single digit number
+	$MOV AH,0x0E
+	$MOV BH,0
+	$INT 0x10		//Show it
+	$SUB AL,48
+	$CMP AL,0
+	$JL BADKEY
+	$CMP AL,9
+	$JG BADKEY		
+temp=AL;
+cylinder = cylinder*10;
+SECOND:
+cylinder = cylinder+temp;
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$CMP AL,13
+	$JE FOURTH		//If enter Single digit number
+	$MOV AH,0x0E
+	$MOV BH,0
+	$INT 0x10		//Show it
+	$SUB AL,48
+	$CMP AL,0
+	$JL BADKEY
+	$CMP AL,9
+	$JG BADKEY		
+temp=AL;
+cylinder = cylinder*10;
+THIRD:
+cylinder = cylinder+temp;
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$CMP AL,13
+	$JE FOURTH		//If enter Single digit number
+	WRITESTR("\nNumbers larger than 999 not supported..");
+	$JMP CYLINDER
+FOURTH:
+SECTOR:
+WRITESTR("\nNumber of sector to read   : ");
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$CMP AL,13
+	$JE BADKEYS		//If the first key is enter Fuss...
+	$MOV AH,0x0E
+	$MOV BH,0
+	$INT 0x10		//Show it
+	$SUB AL,48
+	$CMP AL,0
+	$JL BADKEYS
+	$CMP AL,9
+	$JG BADKEYS		//If key is less than 0 or greater than 9
+	$JMP FIRSTS		//It must be a letter
+BADKEYS:
+	WRITESTR("\nKey not 0 thru 9...");
+	$JMP SECTOR		//Try again
+FIRSTS:
+sector=AL;
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$CMP AL,13
+	$JE FOURTHS		//If enter Single digit number
+	$MOV AH,0x0E
+	$MOV BH,0
+	$INT 0x10		//Show it
+	$SUB AL,48
+	$CMP AL,0
+	$JL BADKEYS
+	$CMP AL,9
+	$JG BADKEYS		
+temp=AL;
+sector = sector*10;
+SECONDS:
+sector = sector+temp;
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$CMP AL,13
+	$JE FOURTHS		//If enter Single digit number
+	$MOV AH,0x0E
+	$MOV BH,0
+	$INT 0x10		//Show it
+	$SUB AL,48
+	$CMP AL,0
+	$JL BADKEYS
+	$CMP AL,9
+	$JG BADKEYS		
+temp=AL;
+sector = sector*10;
+THIRDS:
+sector = sector+temp;
+	$MOV AH,0x0
+	$INT 0x16		//Get a key
+	$CMP AL,13
+	$JE FOURTHS		//If enter Single digit number
+	WRITESTR("\nNumbers larger than 999 not supported..");
+	$JMP SECTOR
+FOURTHS:
+	$MOV AH,0x0
+	$MOV DL,#drive
+	$INT 0x13		//Reset the drive
+	if( CARRYFLAG ){
+	WRITESTR("\nError during drive reset...Exiting\n");
+	$JMP FINISHED
+	}
+ELSE{
+	WRITESTR("\nDrive reset ok............");
+}
+	WRITESTR("\nReading disk...............");
+	$MOV AX,DS
+	$MOV ES,AX
+	$MOV AH,0x02
+	$MOV AL,0x01
+CH=cylinder;
+CL=sector;
+DH=head;
+DL=drive;
+BX=#Buffer;
+	$INT 0x13		//Read a sector into buffer
+	if( CARRYFLAG ){
+	WRITESTR("\nError reading disk...Exiting\n");
+	$JMP FINISHED
+	}
+ELSE{
+	WRITESTR("\nDisk read ok..............");
+}
+	WRITESTR("\nWriting file..............");
+DX=#Buffer;
+CX=0x200;			//Write 512 bytes
+BX=filehandle;
+AH=0x40;
+$INT 0x21
+			//Call dos to write the file
+if( CARRYFLAG ){
+	WRITESTR("\nError writing file........");
+	$JMP FINISHED
+	}
+ELSE{
+	WRITESTR("\nFile writen to disk.......");
+}
+FINISHED:
+
+$MOV AH,0x3E
+$INT 0x21			//Close file
+$MOV AX,0x0010			
+$INT 0x21			//Leave!!!!!
+}
