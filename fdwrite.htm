@@ -1,0 +1,83 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.5 [en] (Win98; I) [Netscape]">
+   <meta name="Author" content="Scott Billingsley">
+   <meta name="KeyWords" content="asm,assembler,assembly,hex,binary,binary to hex">
+   <meta name="Description" content="Hex a Binary to HEX converter..">
+   <title>FDWrite</title>
+</head>
+<body text="#000000" bgcolor="#33CCFF" link="#330033" vlink="#551A8B" alink="#FF0000">
+
+<h1>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+FDWrite&nbsp;</h1>
+
+<hr SIZE=5 WIDTH="100%">
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; <font color="#FF0000">WARNING..Improper
+use can destroy data.</font></font></tt>
+<br><tt><font color="#FF0000"><font size=+2>&nbsp;&nbsp;&nbsp; Use at your
+own risk...</font></font></tt>
+<br><tt><font size=+2>&nbsp;</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; FDWrite is a program to write
+a file to any</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; sector on a 3.5 floppy. It can
+be used to</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; write a boot sector,FAT table
+or just a file.</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; It uses BIOS routines to write
+so there is</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; no check before the write and
+no update of</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; the FAT after.</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; This version
+only supports 3.5 1.44m</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; floppy disk. If you recompile
+the source so</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; it can write to the hard drive,
+I am <font color="#FF0000">NOT</font><font color="#000000"></font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; responsable
+for any damage. With all that</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; said, you
+have been warned. Don't hollar at</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; me if you
+kill you floppy.</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Now, down to the fun stuff. If you write</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; your bootstrap
+code you can use FDWrite to</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; install
+it. Just input the file name, head 0,</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; cylinder
+0, and sector 1. Don't forget to look</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; at my other
+program, <a href="sector.htm">Sector</a> ,which will read</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; any sector
+on a floppy to a file.</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+FDWrite was writen in NASH-IDE 1.1 and</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; compiled
+using NASM 0.95. The asm code is</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp; included
+in the zip file.</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Here is a screen shot.</font></font></tt>
+<br><tt><font color="#000000"><font size=+2>&nbsp;&nbsp;&nbsp;&nbsp;</font></font></tt><img SRC="fdwrite.gif" height=356 width=640>
+<p><tt><font size=+2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FDWrite
+has plenty of error checking. Note that</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; the buffer is linited to 4k. If
+you need a bigger</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; buffer just change the number
+of bytes to read and</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; the size of the buffer.</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; You can&nbsp;</font></tt>
+<tt><font size=+2><a href="fdwrite.zip">download </a>a copy here..</font></tt>
+<a href="fdwrite.zip">FDWRITE<tt><font size=+2>.ZIP</font></tt></a>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; If you have a comment or question,
+please feel free</font></tt>
+<br><tt><font size=+2>&nbsp;&nbsp;&nbsp; to send me an <a href="mailto:kb5ryo@qsl.net">Email</a>.</font></tt>
+<br>&nbsp;
+<p><!-- START OF SCRIPT --><!-- For more scripts visit http://www.netpedia.com --><SCRIPT="Javascript"><form><input TYPE="button" VALUE="  HOME  " onClick="history.go(-1)"></form><!-- END OF SCRIPT -->
+</body>
+</html>
